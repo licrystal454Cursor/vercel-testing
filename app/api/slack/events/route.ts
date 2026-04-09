@@ -71,6 +71,7 @@ export async function POST(req: Request) {
 
   // Slack URL verification handshake — handle before signature check
   if (body.type === 'url_verification') {
+    console.log('[slack] url_verification challenge:', body.challenge);
     return Response.json({ challenge: body.challenge });
   }
 
