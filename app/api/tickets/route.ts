@@ -10,11 +10,8 @@ const gateway = createOpenAI({
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get('status');
-
-  let tickets = ticketStore.list();
-  if (status) tickets = tickets.filter(t => t.status === status);
-
+  const status = searchParams.get('status') ?? undefined;
+  const tickets = await ticketStore.list(status);
   return Response.json({ tickets });
 }
 
@@ -47,6 +44,6 @@ export async function POST(req: Request) {
     updatedAt: now,
   };
 
-  ticketStore.create(ticket);
+  await ticketStore.create(ticket);
   return Response.json({ ticket }, { status: 201 });
 }

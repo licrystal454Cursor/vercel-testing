@@ -8,7 +8,7 @@ export default async function TicketDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const ticket = ticketStore.get(id);
+  const ticket = await ticketStore.get(id);
   if (!ticket) notFound();
 
   return (

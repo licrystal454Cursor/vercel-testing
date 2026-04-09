@@ -86,8 +86,8 @@ export async function POST(req: Request) {
 
     after(async () => {
       // Idempotency: Slack retries if it doesn't get a 200 within 3s
-      const duplicate = ticketStore.list().some(t => t.input.threadTs === ts);
-      if (duplicate) return;
+      const existing = await ticketStore.list();
+      if (existing.some(t => t.input.threadTs === ts)) return;
 
       // Strip the bot mention (<@UXXXXXX>) from the message
       const messageText = text.replace(/<@[A-Z0-9]+>\s*/g, '').trim();
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
         updatedAt: now,
       };
 
-      ticketStore.create(ticket);
+      await ticketStore.create(ticket);
 
       await postSlackReply(
         channel,
