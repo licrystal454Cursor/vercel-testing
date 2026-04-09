@@ -63,7 +63,7 @@ export function TicketDetailClient({ ticket }: { ticket: SupportTicket }) {
       {/* AI analysis */}
       <Section title="AI Analysis">
         <div className="text-sm bg-blue-50 border border-blue-100 rounded p-4 whitespace-pre-wrap leading-relaxed">
-          {ticket.aiAnalysis}
+          {ticket.aiAnalysis || <span className="text-slate-400 italic">AI analysis pending — refresh in ~20 seconds.</span>}
         </div>
       </Section>
 
@@ -82,7 +82,7 @@ export function TicketDetailClient({ ticket }: { ticket: SupportTicket }) {
             Show fetched documentation
           </summary>
           <pre className="mt-2 text-xs bg-slate-50 border border-slate-200 rounded p-3 overflow-auto max-h-64 whitespace-pre-wrap">
-            {ticket.publicDocsContent}
+            {ticket.publicDocsContent || 'No documentation fetched.'}
           </pre>
         </details>
       </Section>
