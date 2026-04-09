@@ -1,6 +1,11 @@
 import type { SupportTicket } from './types';
 
-const API = process.env.LEAD_AGENT_API_URL ?? '';
+function getBaseUrl() {
+  if (process.env.LEAD_AGENT_API_URL) return process.env.LEAD_AGENT_API_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'http://localhost:3000';
+}
+const API = getBaseUrl();
 
 export async function createTicket(
   messageText: string
