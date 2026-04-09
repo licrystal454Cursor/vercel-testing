@@ -10,4 +10,4 @@ internal documentation, and try to replicate the problem.
 If the support agent doesn't like the response, it can talk with the agent to iterate on the response. Once the support agent is satisfied 
 with the response they can then either send the message directly to slack or copy the message to send themselves. 
 
-All questions from slack should create a ticket except if it isn't a question or it's a question from somebody within our organization. 
+All questions from slack should create a ticket except if it isn't a question or it's a question from somebody within our organization
