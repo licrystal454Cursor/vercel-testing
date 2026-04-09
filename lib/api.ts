@@ -1,6 +1,6 @@
 import type { SupportTicket } from './types';
 
-const API = process.env.LEAD_AGENT_API_URL ?? 'http://localhost:3000';
+const API = process.env.LEAD_AGENT_API_URL ?? '';
 
 export async function createTicket(
   messageText: string
