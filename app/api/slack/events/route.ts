@@ -67,16 +67,15 @@ async function postSlackReply(
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
-
-  const valid = await verifySlackSignature(req.headers, rawBody);
-  if (!valid) return new Response('Unauthorized', { status: 401 });
-
   const body = JSON.parse(rawBody);
 
-  // Slack URL verification handshake
+  // Slack URL verification handshake — handle before signature check
   if (body.type === 'url_verification') {
     return Response.json({ challenge: body.challenge });
   }
+
+  const valid = await verifySlackSignature(req.headers, rawBody);
+  if (!valid) return new Response('Unauthorized', { status: 401 });
 
   if (body.type === 'event_callback' && body.event?.type === 'app_mention') {
     const { text, channel, ts, user, bot_id } = body.event;
