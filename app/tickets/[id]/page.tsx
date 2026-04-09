@@ -1,4 +1,5 @@
-import { fetchTicket } from '@/lib/api';
+import { notFound } from 'next/navigation';
+import { ticketStore } from '@/lib/store';
 import { TicketDetailClient } from './TicketDetailClient';
 
 export default async function TicketDetailPage({
@@ -7,7 +8,8 @@ export default async function TicketDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { ticket } = await fetchTicket(id);
+  const ticket = ticketStore.get(id);
+  if (!ticket) notFound();
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-10">

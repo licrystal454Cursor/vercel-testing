@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { fetchTickets } from '@/lib/api';
+import { ticketStore } from '@/lib/store';
 import { TicketCard } from '@/components/TicketCard';
 
 export default async function TicketsPage({
@@ -8,7 +8,8 @@ export default async function TicketsPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status } = await searchParams;
-  const { tickets } = await fetchTickets(status);
+  let tickets = ticketStore.list();
+  if (status) tickets = tickets.filter(t => t.status === status);
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-10">
