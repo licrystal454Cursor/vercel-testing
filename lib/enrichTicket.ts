@@ -57,28 +57,32 @@ Customer message: "${messageText}"
 
 ${docsSection}
 
-Respond with a JSON object containing exactly two fields:
+Respond with a JSON object containing exactly three fields:
 - "diagnosis": A technical explanation of what is likely causing the issue, referencing specific Stripe concepts, APIs, or SDK behavior. Be specific and actionable.
 - "draftReply": A friendly, professional reply to send directly to the customer. Acknowledge their issue, explain the likely cause, and provide clear next steps or a solution.
+- "docsExcerpt": Extract only the sections of the documentation most relevant to this issue. Remove all navigation, headers, footers, and boilerplate. Keep only the meaningful technical content, formatted clearly.
 
 Respond with valid JSON only — no markdown, no code fences.`,
   });
 
   let diagnosis = raw.trim();
   let draftReply = '';
+  let docsExcerpt = content ? `Source: ${url}\n\n${content}` : '';
 
   try {
-    // Strip markdown code fences if the model included them
     const cleaned = raw.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
     const parsed = JSON.parse(cleaned);
     diagnosis = parsed.diagnosis ?? diagnosis;
     draftReply = parsed.draftReply ?? '';
+    docsExcerpt = parsed.docsExcerpt
+      ? `Source: ${url}\n\n${parsed.docsExcerpt}`
+      : docsExcerpt;
   } catch {
     // If JSON parse fails, use the raw text as the diagnosis
   }
 
   await ticketStore.update(ticketId, {
-    publicDocsContent: content ? `Source: ${url}\n\n${content}` : '',
+    publicDocsContent: docsExcerpt,
     aiAnalysis: diagnosis,
     aiDraftReply: draftReply,
     updatedAt: new Date().toISOString(),
