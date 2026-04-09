@@ -83,4 +83,26 @@ export const ticketStore = {
     if (error) throw new Error(error.message);
     return ticket;
   },
+
+  async update(id: string, patch: Partial<SupportTicket>): Promise<void> {
+    const columnMap: Record<string, string> = {
+      status: 'status',
+      extractedQuestion: 'extracted_question',
+      publicDocsContent: 'public_docs_content',
+      notionContent: 'notion_content',
+      replicationResult: 'replication_result',
+      aiAnalysis: 'ai_analysis',
+      aiDraftReply: 'ai_draft_reply',
+      updatedAt: 'updated_at',
+      resolvedAt: 'resolved_at',
+      sentReply: 'sent_reply',
+    };
+    const row: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(patch)) {
+      const col = columnMap[key];
+      if (col) row[col] = value ?? null;
+    }
+    const { error } = await supabase.from('tickets').update(row).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
 };

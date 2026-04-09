@@ -2,6 +2,7 @@ import { after } from 'next/server';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { ticketStore } from '@/lib/store';
+import { enrichTicket } from '@/lib/enrichTicket';
 import type { SupportTicket } from '@/lib/types';
 
 const gateway = createOpenAI({
@@ -120,6 +121,7 @@ export async function POST(req: Request) {
       };
 
       await ticketStore.create(ticket);
+      await enrichTicket(ticket.id, messageText);
 
       await postSlackReply(
         channel,

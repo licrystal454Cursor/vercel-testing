@@ -1,6 +1,6 @@
-1. Figure out which database I should be using for my app. I want you to list out the Pros and cons for each one. Specifically I want you to analyze supabase. 
+Done Figure out which database I should be using for my app. I want you to list out the Pros and cons for each one. Specifically I want you to analyze supabase. 
 2. Connect to Notion
-3. Connect to Slack 
+Done Connect to Slack 
 4. Connect to Linear
 
 User Stories: 
