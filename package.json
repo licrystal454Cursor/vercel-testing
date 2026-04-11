@@ -6,21 +6,30 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "eval": "npx tsx evals/run.ts",
+    "eval:case": "npx tsx evals/run.ts --case"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.52",
+    "@ai-sdk/openai-compatible": "^2.0.41",
     "@ai-sdk/react": "^3.0.155",
-    "@clerk/nextjs": "^7.0.12",
+    "@notionhq/client": "^5.17.0",
+    "@parallel-web/ai-sdk-tools": "^0.2.1",
+    "@stripe/agent-toolkit": "^0.9.0",
     "@supabase/supabase-js": "^2.102.1",
     "ai": "^6.0.153",
+    "bash-tool": "^1.3.16",
+    "braintrust": "^3.8.0",
     "clsx": "^2.1.1",
+    "just-bash": "^2.14.1",
     "lucide-react": "^1.7.0",
     "next": "16.2.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -29,6 +38,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "postgres": "^3.4.9",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

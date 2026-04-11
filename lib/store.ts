@@ -10,10 +10,11 @@ const supabase = createClient(
 function toTicket(row: Record<string, string>): SupportTicket {
   return {
     id: row.id,
-    status: row.status as 'open' | 'resolved',
+    status: row.status as 'open' | 'waiting_on_customer' | 'resolved',
     input: {
       messageText: row.message_text,
       channelId: row.channel_id,
+      channelName: row.channel_name ?? undefined,
       threadTs: row.thread_ts,
       userId: row.user_id,
       triggeredAt: row.triggered_at,
@@ -28,6 +29,9 @@ function toTicket(row: Record<string, string>): SupportTicket {
     updatedAt: row.updated_at,
     resolvedAt: row.resolved_at ?? undefined,
     sentReply: row.sent_reply ?? undefined,
+    lastCustomerMessage: row.last_customer_message ?? undefined,
+    archived: Boolean(row.archived),
+    assigneeId: row.assignee_id ?? undefined,
   };
 }
 
@@ -37,6 +41,7 @@ function toRow(ticket: SupportTicket) {
     status: ticket.status,
     message_text: ticket.input.messageText,
     channel_id: ticket.input.channelId,
+    channel_name: ticket.input.channelName ?? null,
     thread_ts: ticket.input.threadTs,
     user_id: ticket.input.userId,
     triggered_at: ticket.input.triggeredAt,
@@ -60,7 +65,12 @@ export const ticketStore = {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (status) query = query.eq('status', status);
+    if (status === 'archived') {
+      query = query.eq('archived', true);
+    } else {
+      query = query.eq('archived', false);
+      if (status) query = query.eq('status', status);
+    }
 
     const { data, error } = await query;
     if (error) throw new Error(error.message);
@@ -96,6 +106,9 @@ export const ticketStore = {
       updatedAt: 'updated_at',
       resolvedAt: 'resolved_at',
       sentReply: 'sent_reply',
+      lastCustomerMessage: 'last_customer_message',
+      archived: 'archived',
+      assigneeId: 'assignee_id',
     };
     const row: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(patch)) {

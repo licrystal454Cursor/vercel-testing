@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { ticketStore } from '@/lib/store';
+import { teamStore } from '@/lib/teamStore';
 export const dynamic = 'force-dynamic';
-import { TicketCard } from '@/components/TicketCard';
+import { TicketListClient } from '@/components/TicketListClient';
 
 export default async function TicketsPage({
   searchParams
@@ -9,7 +10,10 @@ export default async function TicketsPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status } = await searchParams;
-  const tickets = await ticketStore.list(status);
+  const [tickets, teamMembers] = await Promise.all([
+    ticketStore.list(status),
+    teamStore.listMembers(),
+  ]);
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-10">
@@ -21,6 +25,18 @@ export default async function TicketsPage({
             className="px-3 py-1 rounded-full border border-slate-300 hover:bg-slate-100"
           >
             AI Chat
+          </Link>
+          <Link
+            href="/team"
+            className="px-3 py-1 rounded-full border border-slate-300 hover:bg-slate-100"
+          >
+            Team
+          </Link>
+          <Link
+            href="/agents"
+            className="px-3 py-1 rounded-full border border-slate-300 hover:bg-slate-100"
+          >
+            Agents
           </Link>
           <a
             href="/tickets"
@@ -52,19 +68,25 @@ export default async function TicketsPage({
           >
             Resolved
           </a>
+          <a
+            href="/tickets?status=archived"
+            className={`px-3 py-1 rounded-full border ${
+              status === 'archived'
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'border-slate-300 hover:bg-slate-100'
+            }`}
+          >
+            Archived
+          </a>
         </div>
       </div>
 
-      <div className="space-y-3">
-        {tickets.map(ticket => (
-          <TicketCard key={ticket.id} ticket={ticket} />
-        ))}
-        {tickets.length === 0 && (
-          <p className="text-center text-slate-400 py-16">
-            No {status ?? ''} tickets found.
-          </p>
-        )}
-      </div>
+      <TicketListClient tickets={tickets} isArchived={status === 'archived'} teamMembers={teamMembers} />
+      {tickets.length === 0 && (
+        <p className="text-center text-slate-400 py-16">
+          No {status ?? ''} tickets found.
+        </p>
+      )}
     </main>
   );
 }
