@@ -1,9 +1,7 @@
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { createGateway } from '@ai-sdk/gateway';
 import { customProvider } from 'ai';
 
-const gateway = createOpenAICompatible({
-  name: 'vercel-ai-gateway',
-  baseURL: 'https://ai-gateway.vercel.sh/v1',
+export const gateway = createGateway({
   apiKey: process.env.AI_GATEWAY_KEY,
 });
 

@@ -1,14 +1,9 @@
 import { after } from 'next/server';
-import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
+import { gateway } from '@/lib/provider';
 import { ticketStore } from '@/lib/store';
 import { enrichTicket } from '@/lib/enrichTicket';
 import type { SupportTicket } from '@/lib/types';
-
-const gateway = createOpenAI({
-  baseURL: 'https://ai-gateway.vercel.sh/v1',
-  apiKey: process.env.AI_GATEWAY_KEY,
-});
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -22,6 +17,7 @@ export async function POST(req: Request) {
 
   const { text: title } = await generateText({
     model: gateway('openai/gpt-4.1-mini'),
+    providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5'] } },
     prompt: `Summarize this support message as a short ticket title (max 10 words, no punctuation at end):\n\n"${messageText}"`,
   });
 

@@ -1,14 +1,8 @@
 import { generateText, tool } from 'ai';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { gateway } from '@/lib/provider';
 import { z } from 'zod';
 import type { EnrichmentOutput } from '@/lib/runEnrichmentAgent';
 import type { EvalCase } from './dataset';
-
-const gateway = createOpenAICompatible({
-  name: 'vercel-ai-gateway',
-  baseURL: 'https://ai-gateway.vercel.sh/v1',
-  apiKey: process.env.AI_GATEWAY_KEY,
-});
 
 export interface Score {
   name: string;
@@ -125,6 +119,7 @@ const judgeSchema = z.object({
 async function callJudge(prompt: string): Promise<{ pass: boolean; score: number; reason: string }> {
   const { staticToolCalls } = await generateText({
     model: gateway('openai/gpt-4.1-mini'),
+    providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5'] } },
     tools: {
       judge: tool({
         description: 'Submit the evaluation result',

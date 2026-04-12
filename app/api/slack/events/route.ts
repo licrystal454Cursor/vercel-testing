@@ -1,16 +1,11 @@
 import { after } from 'next/server';
-import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
+import { gateway } from '@/lib/provider';
 import { ticketStore } from '@/lib/store';
 import { teamStore } from '@/lib/teamStore';
 import { agentStore } from '@/lib/agentStore';
 import { enrichTicket } from '@/lib/enrichTicket';
 import type { SupportTicket } from '@/lib/types';
-
-const gateway = createOpenAI({
-  baseURL: 'https://ai-gateway.vercel.sh/v1',
-  apiKey: process.env.AI_GATEWAY_KEY,
-});
 
 const enc = new TextEncoder();
 
@@ -143,6 +138,7 @@ export async function POST(req: Request) {
       // Detect if this message signals resolution
       const { text: verdict } = await generateText({
         model: gateway('openai/gpt-4.1-mini'),
+        providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5'] } },
         prompt: `Does the following customer message signal that their issue has been resolved? Reply with only "yes" or "no".\n\nMessage: "${messageText}"`,
       });
 
@@ -200,6 +196,7 @@ export async function POST(req: Request) {
 
           const { text: verdict } = await generateText({
             model: gateway('openai/gpt-4.1-mini'),
+            providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5'] } },
             prompt: `Does the following customer message signal that their issue has been resolved? Reply with only "yes" or "no".\n\nMessage: "${messageText}"`,
           });
 
@@ -239,6 +236,7 @@ export async function POST(req: Request) {
 
       const { text: title } = await generateText({
         model: gateway('openai/gpt-4.1-mini'),
+        providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5'] } },
         prompt: `Summarize this support message as a short ticket title (max 10 words, no punctuation at end):\n\n"${messageText}"`,
       });
 

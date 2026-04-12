@@ -1,4 +1,3 @@
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { ToolLoopAgent, stepCountIs, createAgentUIStreamResponse, generateId, type UIMessage } from 'ai';
 import { agentProvider } from '@/lib/provider';
 import { createSearchTool, createExtractTool } from '@parallel-web/ai-sdk-tools';
@@ -12,12 +11,6 @@ import { searchNotionDocs, getNotionPage, fetchNotionPageById, parseNotionPageId
 import { getCachedDoc, setCachedDoc } from '@/lib/docsCache';
 import { consoleTelemetry } from '@/lib/telemetry';
 import type { SupportTicket, AgentConfig } from '@/lib/types';
-
-const gateway = createOpenAICompatible({
-  name: 'vercel-ai-gateway',
-  baseURL: 'https://ai-gateway.vercel.sh/v1',
-  apiKey: process.env.AI_GATEWAY_KEY,
-});
 
 const searchStripeDocs = createSearchTool({
   source_policy: { include_domains: ['docs.stripe.com'] },
@@ -236,6 +229,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const agent = new ToolLoopAgent({
     model: agentProvider.languageModel('chat-default'),
+    providerOptions: {
+      gateway: {
+        models: ['anthropic/claude-haiku-4.5'],
+      },
+    },
     instructions: buildSystemPrompt(ticket, agentConfig, stripeCustomerId, prefetchedNotionPages),
     tools: toolSet,
     stopWhen: stepCountIs(10),
