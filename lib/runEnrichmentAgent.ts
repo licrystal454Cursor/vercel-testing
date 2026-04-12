@@ -1,4 +1,3 @@
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { ToolLoopAgent, tool, stepCountIs, hasToolCall } from 'ai';
 import { createSearchTool, createExtractTool } from '@parallel-web/ai-sdk-tools';
 import type { SearchResult, ExtractResponse } from 'parallel-web/resources/beta/beta.mjs';
@@ -9,12 +8,7 @@ import { indexNotionPage, searchNotionChunks, formatChunksForPrompt } from './no
 import { getCachedDoc, setCachedDoc } from './docsCache';
 import { consoleTelemetry } from './telemetry';
 import type { AgentConfig } from './types';
-
-const gateway = createOpenAICompatible({
-  name: 'vercel-ai-gateway',
-  baseURL: 'https://ai-gateway.vercel.sh/v1',
-  apiKey: process.env.AI_GATEWAY_KEY,
-});
+import { agentProvider, type AgentModelId } from './provider';
 
 const searchStripeDocs = createSearchTool({
   source_policy: { include_domains: ['docs.stripe.com'] },
@@ -44,6 +38,15 @@ const extractStripePage = {
 
 const BASE_INSTRUCTIONS = `You are a Stripe support expert helping support agents respond to customer issues.
 
+## Notion context takes precedence
+
+Internal Notion documentation represents customer-specific configuration and known constraints.
+If Notion results indicate that the customer does NOT use a particular Stripe feature or product,
+you MUST NOT recommend that feature in your reply — even if it would otherwise be the standard
+Stripe recommendation. Notion context always takes precedence over general best practices.
+
+## Research steps
+
 In your FIRST step, call ALL of the following tools simultaneously (parallel tool calls):
 - searchStripeDocs with a query describing the customer's issue
 - searchNotionDocs with the same query
@@ -65,10 +68,20 @@ export interface EnrichmentOutput {
   stepCount: number;
 }
 
+export interface EnrichmentAgentOptions {
+  /** Replace specific tools — useful in evals to avoid real external calls. */
+  toolOverrides?: {
+    searchNotionDocs?: typeof searchNotionDocs;
+  };
+  /** Override the model used by the agent — useful for comparing models in evals. */
+  model?: AgentModelId;
+}
+
 export async function runEnrichmentAgent(
   messageText: string,
   agentConfig?: AgentConfig,
   channelContext?: { stripeCustomerId?: string; secretKey?: string },
+  options?: EnrichmentAgentOptions,
 ): Promise<EnrichmentOutput> {
   let stripeTools: Record<string, unknown> = {};
   let stripeToolkit: Awaited<ReturnType<typeof createStripeAgentToolkit>> | null = null;
@@ -108,7 +121,7 @@ export async function runEnrichmentAgent(
     const tools = {
       searchStripeDocs,
       extractStripePage,
-      searchNotionDocs,
+      searchNotionDocs: options?.toolOverrides?.searchNotionDocs ?? searchNotionDocs,
       ...stripeTools,
       submitAnalysis: tool({
         description:
@@ -135,7 +148,7 @@ export async function runEnrichmentAgent(
     const researchToolNames = Object.keys(tools).filter(k => k !== 'submitAnalysis') as Array<keyof typeof tools>;
 
     const agent = new ToolLoopAgent({
-      model: gateway('openai/gpt-4.1-mini'),
+      model: agentProvider.languageModel(options?.model ?? 'enrichment-fast'),
       instructions,
       experimental_telemetry: {
         isEnabled: true,

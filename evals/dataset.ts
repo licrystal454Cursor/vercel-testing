@@ -1,4 +1,11 @@
 import type { AgentConfig } from '@/lib/types';
+import type { AgentModelId } from '@/lib/provider';
+
+export interface NotionFixturePage {
+  title: string;
+  url: string;
+  content: string;
+}
 
 export interface EvalCase {
   id: string;
@@ -7,6 +14,16 @@ export interface EvalCase {
   messageText: string;
   agentConfig?: AgentConfig;
   channelContext?: { stripeCustomerId?: string; secretKey?: string };
+  /**
+   * Override the model used by the agent for this case.
+   * Defaults to 'enrichment-fast' if omitted.
+   */
+  modelOverride?: AgentModelId;
+  /**
+   * Pages returned by the Notion mock for this case.
+   * If omitted, the mock returns an empty array.
+   */
+  notionFixture?: NotionFixturePage[];
   /** What the output should/shouldn't contain — used by scorers */
   constraints: {
     /** Phrases/words the draft reply MUST NOT mention */
@@ -81,12 +98,77 @@ Direct all subscription management questions to their internal admin dashboard.`
     },
   },
   {
+    id: 'subscription-cancel-no-portal',
+    description: 'Cancellation flow — Notion says no Customer Portal, agent must recommend API-only approach',
+    messageText: 'What is the best way to let customers cancel their own subscriptions?',
+    notionFixture: [
+      {
+        title: 'Customer Billing Setup',
+        url: 'https://notion.so/customer-billing-setup',
+        content: 'Customer is not using the Customer Portal. All subscription management must be handled via the API or a custom-built interface.',
+      },
+    ],
+    constraints: {
+      mustNotMention: ['customer portal', 'billing portal'],
+      mustMention: ['subscription', 'cancel'],
+      expectation:
+        'Notion context says the customer does not use the Customer Portal. The agent should recommend the subscriptions.update or subscriptions.cancel API (or a custom UI) and must not suggest the Customer Portal as an option.',
+    },
+  },
+  {
+    id: 'subscription-cancel-no-portal-reasoning',
+    description: 'Same as subscription-cancel-no-portal but using enrichment-reasoning model to compare compliance',
+    messageText: 'What is the best way to let customers cancel their own subscriptions?',
+    modelOverride: 'enrichment-reasoning',
+    notionFixture: [
+      {
+        title: 'Customer Billing Setup',
+        url: 'https://notion.so/customer-billing-setup',
+        content: 'Customer is not using the Customer Portal. All subscription management must be handled via the API or a custom-built interface.',
+      },
+    ],
+    constraints: {
+      mustNotMention: ['customer portal', 'billing portal'],
+      mustMention: ['subscription', 'cancel'],
+      expectation:
+        'Notion context says the customer does not use the Customer Portal. The agent should recommend the subscriptions.update or subscriptions.cancel API (or a custom UI) and must not suggest the Customer Portal as an option.',
+    },
+  },
+  {
     id: 'payout-delay',
     description: 'Payout timing question — should reference standard payout schedules',
     messageText: 'Why are my payouts delayed? I expected them yesterday but still nothing.',
     constraints: {
       mustMention: ['payout', 'schedule'],
       expectation: 'Should explain standard payout timing, mention the Dashboard payout settings, and note weekends/holidays may cause delays.',
+    },
+  },
+  {
+    id: 'bank-payments-link-context',
+    description: 'Bank payments visible in checkout — Notion context explains Link instant bank payments',
+    messageText: 'Bank payments are showing up in my checkout session but I have ACH turned off. Why?',
+    notionFixture: [
+      {
+        title: 'Link Instant Bank Payments',
+        url: 'https://notion.so/link-instant-bank-payments',
+        content:
+          'Customer has Link instant bank payments enabled. Link instant bank payments will force bank payments to show up even if ACH is turned off.',
+      },
+    ],
+    constraints: {
+      mustMention: ['link instant bank payments', 'ACH'],
+      expectation:
+        'Should explain that Link instant bank payments forces bank payment methods to appear regardless of ACH settings, and advise the customer to disable Link instant bank payments if they do not want bank payments shown.',
+    },
+  },
+  {
+    id: 'bank-payments-no-notion-context',
+    description: 'Bank payments visible in checkout — no Notion context, agent must not invent Link explanation',
+    messageText: 'Bank payments are showing up in my checkout session but I have ACH turned off. Why?',
+    constraints: {
+      mustNotMention: ['link instant bank payments'],
+      expectation:
+        'Without internal Notion context the agent should give a general explanation of why bank payment methods may appear (e.g. other enabled payment methods, Stripe automatic payment methods) without specifically attributing it to Link instant bank payments.',
     },
   },
 ];

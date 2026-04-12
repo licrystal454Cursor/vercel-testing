@@ -8,10 +8,26 @@
  */
 
 import './loadenv'; // Must be first — sets process.env before any module initializes
+import { tool } from 'ai';
+import { z } from 'zod';
 import { dataset } from './dataset';
 import { scoreAll, type Score } from './scorers';
 import { runEnrichmentAgent } from '../lib/runEnrichmentAgent';
 import type { EvalCase } from './dataset';
+
+// ---------------------------------------------------------------------------
+// Mocked tools — keep evals deterministic and free of external side-effects
+// ---------------------------------------------------------------------------
+
+/** Build a Notion mock that returns the case's fixture pages (or empty if none). */
+function makeNotionMock(evalCase: EvalCase) {
+  const fixture = evalCase.notionFixture ?? [];
+  return tool({
+    description: 'Search internal Notion documentation (stubbed for evals).',
+    inputSchema: z.object({ query: z.string() }),
+    execute: async () => fixture,
+  });
+}
 
 // ---------------------------------------------------------------------------
 // CLI arg: optional --case filter
@@ -52,6 +68,10 @@ async function runCase(evalCase: EvalCase): Promise<EvalResult> {
       evalCase.messageText,
       evalCase.agentConfig,
       evalCase.channelContext,
+      {
+        toolOverrides: { searchNotionDocs: makeNotionMock(evalCase) },
+        model: evalCase.modelOverride,
+      },
     );
 
     const scores = await scoreAll(output, evalCase);

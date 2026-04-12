@@ -161,12 +161,23 @@ export function TicketDetailClient({
       messages: initialChatMessages.map(toUIMessage),
       transport: new DefaultChatTransport({
         api: `/api/tickets/${ticket.id}/chat`,
+        // Send only the latest message — server loads authoritative history from DB
+        prepareSendMessagesRequest({ messages, id }) {
+          return { body: { message: messages[messages.length - 1], id } };
+        },
       }),
     });
   }
 
   const { messages, sendMessage, status } = useChat({ chat: chatRef.current });
   const isStreaming = status === 'streaming' || status === 'submitted';
+
+  // "Thinking..." should only show while no text has started streaming yet.
+  // Once the model begins emitting text, the partial message renders in the list instead.
+  const streamingHasText = isStreaming &&
+    messages.filter(m => m.role === 'assistant').at(-1)
+      ?.parts.some(p => p.type === 'text' && 'text' in p && (p as { type: 'text'; text: string }).text.length > 0);
+  const showThinking = isStreaming && !streamingHasText;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -376,7 +387,9 @@ export function TicketDetailClient({
             {messages.map(msg => {
               const textPart = msg.parts.find(p => p.type === 'text');
               const text = textPart && 'text' in textPart ? textPart.text : '';
-              if (!text && msg.role === 'assistant') return null;
+              // During streaming show the partial assistant message even with no text yet
+              // (it will populate word-by-word); only hide fully-empty non-streaming messages
+              if (!text && msg.role === 'assistant' && !isStreaming) return null;
               const isAssistant = msg.role === 'assistant';
               const msgFeedback = feedback[msg.id];
               return (
@@ -468,7 +481,7 @@ export function TicketDetailClient({
                 </div>
               );
             })}
-            {isStreaming && (
+            {showThinking && (
               <div className="flex justify-start">
                 <div className="bg-slate-100 rounded-lg px-4 py-3 text-sm text-slate-500">
                   <span className="animate-pulse">Thinking...</span>

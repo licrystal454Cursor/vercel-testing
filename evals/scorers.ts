@@ -1,4 +1,4 @@
-import { generateText, Output } from 'ai';
+import { generateText, tool } from 'ai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { z } from 'zod';
 import type { EnrichmentOutput } from '@/lib/runEnrichmentAgent';
@@ -119,6 +119,29 @@ const judgeSchema = z.object({
   reason: z.string().describe('Concise explanation of the score (1-2 sentences)'),
 });
 
+// The Vercel AI Gateway does not support response_format, so Output.object / generateObject
+// would fail with a 400 error. Instead we use a tool-without-execute (static tool call),
+// the same pattern as submitAnalysis in runEnrichmentAgent, which works via tool calling.
+async function callJudge(prompt: string): Promise<{ pass: boolean; score: number; reason: string }> {
+  const { staticToolCalls } = await generateText({
+    model: gateway('openai/gpt-4.1-mini'),
+    tools: {
+      judge: tool({
+        description: 'Submit the evaluation result',
+        inputSchema: judgeSchema,
+      }),
+    },
+    toolChoice: { type: 'tool', toolName: 'judge' },
+    prompt,
+  });
+
+  const call = staticToolCalls.find(c => c.toolName === 'judge');
+  if (!call) {
+    return { pass: false, score: 0, reason: 'Judge tool was not called.' };
+  }
+  return call.input as { pass: boolean; score: number; reason: string };
+}
+
 export async function scoreDraftReplyRelevance(
   output: EnrichmentOutput,
   evalCase: EvalCase,
@@ -127,10 +150,8 @@ export async function scoreDraftReplyRelevance(
     return { name: 'draft_reply_relevance', pass: false, score: 0, reason: 'Draft reply is empty.' };
   }
 
-  const { output: judged } = await generateText({
-    model: gateway('openai/gpt-4.1-mini'),
-    output: Output.object({ schema: judgeSchema }),
-    prompt: `You are evaluating whether a support agent's draft reply is relevant and helpful for the customer's question.
+  const judged = await callJudge(
+    `You are evaluating whether a support agent's draft reply is relevant and helpful for the customer's question.
 
 Customer message: "${evalCase.messageText}"
 ${evalCase.constraints.expectation ? `Expected answer quality: ${evalCase.constraints.expectation}` : ''}
@@ -142,7 +163,7 @@ Score this draft reply from 0 to 1:
 - 1.0: Directly addresses the question with accurate, actionable information
 - 0.5: Partially relevant but missing key information or too vague
 - 0.0: Off-topic, incorrect, or unhelpful`,
-  });
+  );
 
   return { name: 'draft_reply_relevance', ...judged };
 }
@@ -177,10 +198,8 @@ export async function scoreConstraintCompliance(
     .filter(Boolean)
     .join('\n');
 
-  const { output: judged } = await generateText({
-    model: gateway('openai/gpt-4.1-mini'),
-    output: Output.object({ schema: judgeSchema }),
-    prompt: `You are checking whether a support agent's response complies with specific constraints.
+  const judged = await callJudge(
+    `You are checking whether a support agent's response complies with specific constraints.
 
 Context: The support agent is responding to a customer with the following message:
 "${evalCase.messageText}"
@@ -199,7 +218,7 @@ Does this response comply with ALL constraints? Score:
 - 1.0: Fully compliant — all constraints satisfied
 - 0.5: Partially compliant — some constraints met, some violated
 - 0.0: Non-compliant — violates one or more constraints`,
-  });
+  );
 
   return { name: 'constraint_compliance', ...judged };
 }

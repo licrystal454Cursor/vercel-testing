@@ -1,5 +1,6 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { ToolLoopAgent, stepCountIs, createAgentUIStreamResponse, type UIMessage } from 'ai';
+import { ToolLoopAgent, stepCountIs, createAgentUIStreamResponse, generateId, type UIMessage } from 'ai';
+import { agentProvider } from '@/lib/provider';
 import { createSearchTool, createExtractTool } from '@parallel-web/ai-sdk-tools';
 import type { ExtractResponse } from 'parallel-web/resources/beta/beta.mjs';
 import { createStripeAgentToolkit } from '@stripe/agent-toolkit/ai-sdk';
@@ -149,18 +150,28 @@ Respond conversationally to the support agent. Always call tools to fetch real d
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const body = await req.json() as { messages?: UIMessage[] };
-  const uiMessages: UIMessage[] = body.messages ?? [];
+  const body = await req.json() as { message: UIMessage; id: string };
+  const newMessage: UIMessage = body.message;
 
-  // Save the new user message (last user message in history)
-  const lastUserMsg = [...uiMessages].reverse().find(m => m.role === 'user');
-  if (lastUserMsg) {
-    const textPart = (lastUserMsg.parts ?? []).find(
-      (p): p is { type: 'text'; text: string } => p.type === 'text'
-    );
-    const text = textPart?.text ?? '';
-    if (text) await chatStore.save(id, lastUserMsg.id, 'user', text);
-  }
+  // Save the incoming user message immediately
+  const userTextPart = (newMessage.parts ?? []).find(
+    (p): p is { type: 'text'; text: string } => p.type === 'text'
+  );
+  const userText = userTextPart?.text ?? '';
+  if (userText) await chatStore.save(id, newMessage.id, 'user', userText);
+
+  // Load authoritative conversation history from DB and append the new message
+  const dbMessages = await chatStore.list(id);
+  const uiMessages: UIMessage[] = [
+    ...dbMessages
+      .filter(m => m.id !== newMessage.id) // avoid duplicate if save already added it
+      .map(m => ({
+        id: m.id,
+        role: m.role as 'user' | 'assistant',
+        parts: [{ type: 'text' as const, text: m.content }],
+      })),
+    newMessage,
+  ];
 
   const ticket = await ticketStore.get(id);
   if (!ticket) return Response.json({ error: 'Not found' }, { status: 404 });
@@ -224,7 +235,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   console.log('[chat] ticket:', id, '| stripeCustomerId:', stripeCustomerId, '| keySource:', channelSecretKey ? 'channel' : 'env', '| tools:', Object.keys(toolSet), '| agentConfig:', agentConfig?.name ?? 'default');
 
   const agent = new ToolLoopAgent({
-    model: gateway('openai/gpt-4.1-mini'),
+    model: agentProvider.languageModel('chat-default'),
     instructions: buildSystemPrompt(ticket, agentConfig, stripeCustomerId, prefetchedNotionPages),
     tools: toolSet,
     stopWhen: stepCountIs(10),
@@ -239,6 +250,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   return await createAgentUIStreamResponse({
       agent,
       uiMessages,
+      // Drain a copy of the stream server-side so onFinish fires even if the client disconnects
+      consumeSseStream: ({ stream }: { stream: ReadableStream }) => {
+        const reader = stream.getReader();
+        const drain = (): void => { reader.read().then(({ done }) => { if (!done) drain(); }); };
+        drain();
+      },
       onStepFinish: (step) => {
         const toolCalls = step.content
           .filter(p => p.type === 'tool-call')
@@ -265,13 +282,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         // which is before the agent finishes making tool calls.
         await stripeToolkit?.close();
 
-        if (!isAborted && responseMessage?.id) {
+        console.log('[chat] onFinish |', {
+          isAborted,
+          hasResponseMessage: !!responseMessage,
+          responseMessageId: responseMessage?.id,
+          parts: responseMessage?.parts?.map(p => p.type),
+        });
+
+        if (!isAborted) {
           const textPart = (responseMessage.parts ?? []).find(
             (p): p is { type: 'text'; text: string } => p.type === 'text'
           );
           const text = textPart?.text ?? '';
-          console.log('[chat] finish | text length:', text.length);
-          if (text) await chatStore.save(id, responseMessage.id, 'assistant', text);
+          const msgId = responseMessage.id || generateId();
+          console.log('[chat] finish | text length:', text.length, '| msgId:', msgId);
+          if (text) await chatStore.save(id, msgId, 'assistant', text);
         }
       },
   });
