@@ -1,4 +1,6 @@
-import { ToolLoopAgent, stepCountIs, createAgentUIStreamResponse, generateId, type UIMessage } from 'ai';
+import { ToolLoopAgent, tool, stepCountIs, createAgentUIStreamResponse, generateId, type UIMessage } from 'ai';
+import { z } from 'zod';
+import Stripe from 'stripe';
 import { agentProvider } from '@/lib/provider';
 import { createSearchTool, createExtractTool } from '@parallel-web/ai-sdk-tools';
 import type { ExtractResponse } from 'parallel-web/resources/beta/beta.mjs';
@@ -96,9 +98,9 @@ function buildSystemPrompt(
   // Distinguish account IDs (acct_) from customer IDs (cus_) — they are used differently
   const isAccountId = stripeCustomerId?.startsWith('acct_');
   const stripeToolInstructions = stripeCustomerId
-    ? isAccountId
-      ? `- Stripe account tools: LIVE and connected to Stripe account ${stripeCustomerId}. The API key is already scoped to this account — do NOT pass "${stripeCustomerId}" as a customer parameter to any tool. Just call list_payment_intents, list_invoices, list_subscriptions, retrieve_balance, etc. with no customer filter to get all account data. ALWAYS call these tools when asked — never say the connection is inactive.`
-      : `- Stripe account tools: LIVE and connected. Use retrieve_customer("${stripeCustomerId}"), list_payment_intents, list_invoices, list_subscriptions, etc. to query real account data. Pass customer="${stripeCustomerId}" when filtering by customer. ALWAYS call these tools when asked — never say the connection is inactive.`
+      ? isAccountId
+      ? `- Stripe account tools: LIVE and connected to Stripe account ${stripeCustomerId}. The API key is already scoped to this account — do NOT pass "${stripeCustomerId}" as a customer parameter to any tool. Just call list_payment_intents, list_invoices, list_subscriptions, retrieve_balance, get_payment_method_configurations, etc. with no customer filter to get all account data. ALWAYS call these tools when asked — never say the connection is inactive.`
+      : `- Stripe account tools: LIVE and connected. Use retrieve_customer("${stripeCustomerId}"), list_payment_intents, list_invoices, list_subscriptions, get_payment_method_configurations, etc. to query real account data. Pass customer="${stripeCustomerId}" when filtering by customer. ALWAYS call these tools when asked — never say the connection is inactive.`
     : `- Stripe account tools: available but no Stripe account is mapped to this channel yet.`;
 
   const baseInstructions = `You are a Stripe support expert assisting a SUPPORT AGENT (the person you are chatting with now). The support agent is investigating a ticket on behalf of their customer.
@@ -215,6 +217,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     stripeTools = Object.fromEntries(
       Object.entries(rawTools).map(([name, t]) => [name, withToolLogging(name, t)])
     );
+
+    const stripe = new Stripe(stripeSecretKey);
+    stripeTools['get_payment_method_configurations'] = withToolLogging(
+      'get_payment_method_configurations',
+      tool({
+        description: 'List payment method configurations for the Stripe account and show exactly which payment methods (card, ACH/us_bank_account, Link, Apple Pay, SEPA, etc.) are enabled or disabled with their display preferences.',
+        inputSchema: z.object({}),
+        execute: async () => {
+          const list = await stripe.paymentMethodConfigurations.list();
+          return Promise.all(list.data.map(async summary => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const config = await stripe.paymentMethodConfigurations.retrieve(summary.id) as Record<string, any>;
+            // Dynamically extract all payment method fields (they have an `available` property)
+            const methods: Record<string, { available: boolean; preference: string }> = {};
+            for (const [key, val] of Object.entries(config)) {
+              if (val && typeof val === 'object' && 'available' in val) {
+                methods[key] = {
+                  available: val.available as boolean,
+                  preference: val.display_preference?.value ?? 'unknown',
+                };
+              }
+            }
+            return {
+              id: config.id as string,
+              name: config.name as string,
+              active: config.active as boolean,
+              livemode: config.livemode as boolean,
+              is_default: config.is_default as boolean,
+              payment_methods: methods,
+            };
+          }));
+        },
+      })
+    );
   }
 
   const toolSet = {
@@ -231,12 +267,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     model: agentProvider.languageModel('chat-default'),
     providerOptions: {
       gateway: {
-        models: ['anthropic/claude-haiku-4.5'],
+        models: ['anthropic/claude-haiku-4.5', 'google/gemini-2.5-flash-lite'],
       },
     },
+    maxRetries: 5,
     instructions: buildSystemPrompt(ticket, agentConfig, stripeCustomerId, prefetchedNotionPages),
     tools: toolSet,
     stopWhen: stepCountIs(10),
+    prepareStep: async ({ stepNumber }) => {
+      if (stepNumber === 9) return { toolChoice: 'none' };
+      return {};
+    },
     experimental_telemetry: {
       isEnabled: true,
       functionId: 'chat',

@@ -138,7 +138,8 @@ export async function POST(req: Request) {
       // Detect if this message signals resolution
       const { text: verdict } = await generateText({
         model: gateway('openai/gpt-4.1-mini'),
-        providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5'] } },
+        maxRetries: 5,
+        providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5', 'google/gemini-2.5-flash-lite'] } },
         prompt: `Does the following customer message signal that their issue has been resolved? Reply with only "yes" or "no".\n\nMessage: "${messageText}"`,
       });
 
@@ -196,7 +197,7 @@ export async function POST(req: Request) {
 
           const { text: verdict } = await generateText({
             model: gateway('openai/gpt-4.1-mini'),
-            providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5'] } },
+            providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5', 'google/gemini-2.5-flash-lite'] } },
             prompt: `Does the following customer message signal that their issue has been resolved? Reply with only "yes" or "no".\n\nMessage: "${messageText}"`,
           });
 
@@ -236,7 +237,8 @@ export async function POST(req: Request) {
 
       const { text: title } = await generateText({
         model: gateway('openai/gpt-4.1-mini'),
-        providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5'] } },
+        maxRetries: 5,
+        providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5', 'google/gemini-2.5-flash-lite'] } },
         prompt: `Summarize this support message as a short ticket title (max 10 words, no punctuation at end):\n\n"${messageText}"`,
       });
 

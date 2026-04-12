@@ -2,6 +2,8 @@ import { after } from 'next/server';
 import { generateText } from 'ai';
 import { gateway } from '@/lib/provider';
 import { ticketStore } from '@/lib/store';
+import { teamStore } from '@/lib/teamStore';
+import { agentStore } from '@/lib/agentStore';
 import { enrichTicket } from '@/lib/enrichTicket';
 import type { SupportTicket } from '@/lib/types';
 
@@ -13,11 +15,12 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { messageText }: { messageText: string } = await req.json();
+  const { messageText, channelId = 'chat', multiAgent = true }: { messageText: string; channelId?: string; multiAgent?: boolean } = await req.json();
 
   const { text: title } = await generateText({
     model: gateway('openai/gpt-4.1-mini'),
-    providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5'] } },
+    maxRetries: 5,
+    providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5', 'google/gemini-2.5-flash-lite'] } },
     prompt: `Summarize this support message as a short ticket title (max 10 words, no punctuation at end):\n\n"${messageText}"`,
   });
 
@@ -27,7 +30,7 @@ export async function POST(req: Request) {
     status: 'open',
     input: {
       messageText,
-      channelId: 'chat',
+      channelId,
       threadTs: Date.now().toString(),
       userId: 'chat-user',
       triggeredAt: now,
@@ -43,6 +46,16 @@ export async function POST(req: Request) {
   };
 
   await ticketStore.create(ticket);
-  after(() => enrichTicket(ticket.id, messageText));
+  after(async () => {
+    const [assignment, agents] = await Promise.all([
+      teamStore.getChannelAssignment(channelId),
+      agentStore.list(),
+    ]);
+    const agentConfig = assignment?.agentId ? agents.find(a => a.id === assignment.agentId) : undefined;
+    await enrichTicket(ticket.id, messageText, agentConfig, {
+      stripeCustomerId: assignment?.stripeCustomerId,
+      secretKey: assignment?.secretKey,
+    }, { multiAgent });
+  });
   return Response.json({ ticket }, { status: 201 });
 }

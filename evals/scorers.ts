@@ -119,7 +119,8 @@ const judgeSchema = z.object({
 async function callJudge(prompt: string): Promise<{ pass: boolean; score: number; reason: string }> {
   const { staticToolCalls } = await generateText({
     model: gateway('openai/gpt-4.1-mini'),
-    providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5'] } },
+    maxRetries: 5,
+    providerOptions: { gateway: { models: ['anthropic/claude-haiku-4.5', 'google/gemini-2.5-flash-lite'] } },
     tools: {
       judge: tool({
         description: 'Submit the evaluation result',

@@ -38,6 +38,12 @@ export default async function TicketsPage({
           >
             Agents
           </Link>
+          <Link
+            href="/simulate"
+            className="px-3 py-1 rounded-full border border-slate-300 hover:bg-slate-100"
+          >
+            Simulate
+          </Link>
           <a
             href="/tickets"
             className={`px-3 py-1 rounded-full border ${

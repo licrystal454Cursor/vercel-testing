@@ -1,5 +1,5 @@
 import { ticketStore } from './store';
-import { runEnrichmentAgent } from './runEnrichmentAgent';
+import { runEnrichmentAgent, type EnrichmentAgentOptions } from './runEnrichmentAgent';
 import type { AgentConfig } from './types';
 
 export async function enrichTicket(
@@ -7,10 +7,11 @@ export async function enrichTicket(
   messageText: string,
   agentConfig?: AgentConfig,
   channelContext?: { stripeCustomerId?: string; secretKey?: string },
+  options?: EnrichmentAgentOptions,
 ): Promise<void> {
-  console.log('[enrichTicket] starting | custom instructions:', !!agentConfig?.instructions, '| stripe:', !!channelContext?.secretKey);
+  console.log('[enrichTicket] starting | custom instructions:', !!agentConfig?.instructions, '| stripe:', !!channelContext?.secretKey, '| multiAgent:', options?.multiAgent ?? true);
 
-  const output = await runEnrichmentAgent(messageText, agentConfig, channelContext);
+  const output = await runEnrichmentAgent(messageText, agentConfig, channelContext, options);
 
   console.log('[enrichTicket] done | submitAnalysisCalled:', output.submitAnalysisCalled, '| steps:', output.stepCount);
 
