@@ -1,4 +1,4 @@
-import { ToolLoopAgent, tool, stepCountIs, hasToolCall } from 'ai';
+import { ToolLoopAgent, tool, stepCountIs, hasToolCall, type Tool } from 'ai';
 import { createSearchTool, createExtractTool } from '@parallel-web/ai-sdk-tools';
 import type { SearchResult, ExtractResponse } from 'parallel-web/resources/beta/beta.mjs';
 import { createStripeAgentToolkit } from '@stripe/agent-toolkit/ai-sdk';
@@ -71,7 +71,8 @@ export interface EnrichmentOutput {
 export interface EnrichmentAgentOptions {
   /** Replace specific tools — useful in evals to avoid real external calls. */
   toolOverrides?: {
-    searchNotionDocs?: typeof searchNotionDocs;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    searchNotionDocs?: Tool<{ query: string }, any>;
   };
   /** Override the model used by the agent — useful for comparing models in evals. */
   model?: AgentModelId;

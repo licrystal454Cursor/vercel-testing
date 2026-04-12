@@ -25,7 +25,7 @@ function makeNotionMock(evalCase: EvalCase) {
   return tool({
     description: 'Search internal Notion documentation (stubbed for evals).',
     inputSchema: z.object({ query: z.string() }),
-    execute: async (): Promise<string | { title: string; url: string; content: string; }[]> => fixture,
+    execute: async () => fixture,
   });
 }
 
