@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { AgentConfig, ChannelAssignment } from '@/lib/types';
@@ -169,7 +170,7 @@ export function AgentsPageClient({
             <button
               onClick={openCreate}
               className="text-xs text-slate-500 hover:text-slate-900 font-medium"
-              title="New agent"
+              title="New skill"
             >
               + New
             </button>
@@ -214,12 +215,12 @@ export function AgentsPageClient({
         {!selectedAgent && !creating && (
           <div className="bg-white border border-slate-200 rounded-lg p-10 flex flex-col items-center justify-center text-center">
             <FileIcon className="w-8 h-8 text-slate-300 mb-3" />
-            <p className="text-sm text-slate-400">Select an agent or create a new one</p>
+            <p className="text-sm text-slate-400">Select a skill or create a new one</p>
             <button
               onClick={openCreate}
               className="mt-4 px-4 py-1.5 bg-slate-900 text-white rounded text-sm font-medium hover:bg-slate-700 transition-colors"
             >
-              + New agent
+              + New skill
             </button>
           </div>
         )}
@@ -350,7 +351,7 @@ export function AgentsPageClient({
               {assignments.length === 0 ? (
                 <p className="text-xs text-slate-400">
                   Set up channel routing on the{' '}
-                  <a href="/team" className="underline hover:text-slate-700">Team page</a>{' '}
+                  <Link href="/team" className="underline hover:text-slate-700">Team page</Link>{' '}
                   first.
                 </p>
               ) : unappliedAssignments.length > 0 ? (

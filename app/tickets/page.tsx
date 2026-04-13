@@ -21,12 +21,6 @@ export default async function TicketsPage({
         <h1 className="text-2xl font-bold">Support Tickets</h1>
         <div className="flex gap-2 text-sm items-center">
           <Link
-            href="/chat"
-            className="px-3 py-1 rounded-full border border-slate-300 hover:bg-slate-100"
-          >
-            AI Chat
-          </Link>
-          <Link
             href="/team"
             className="px-3 py-1 rounded-full border border-slate-300 hover:bg-slate-100"
           >
@@ -36,7 +30,7 @@ export default async function TicketsPage({
             href="/agents"
             className="px-3 py-1 rounded-full border border-slate-300 hover:bg-slate-100"
           >
-            Agents
+            Skills
           </Link>
           <Link
             href="/simulate"
@@ -44,7 +38,7 @@ export default async function TicketsPage({
           >
             Simulate
           </Link>
-          <a
+          <Link
             href="/tickets"
             className={`px-3 py-1 rounded-full border ${
               !status
@@ -53,8 +47,8 @@ export default async function TicketsPage({
             }`}
           >
             All
-          </a>
-          <a
+          </Link>
+          <Link
             href="/tickets?status=open"
             className={`px-3 py-1 rounded-full border ${
               status === 'open'
@@ -63,8 +57,8 @@ export default async function TicketsPage({
             }`}
           >
             Open
-          </a>
-          <a
+          </Link>
+          <Link
             href="/tickets?status=resolved"
             className={`px-3 py-1 rounded-full border ${
               status === 'resolved'
@@ -73,8 +67,8 @@ export default async function TicketsPage({
             }`}
           >
             Resolved
-          </a>
-          <a
+          </Link>
+          <Link
             href="/tickets?status=archived"
             className={`px-3 py-1 rounded-full border ${
               status === 'archived'
@@ -83,7 +77,7 @@ export default async function TicketsPage({
             }`}
           >
             Archived
-          </a>
+          </Link>
         </div>
       </div>
 

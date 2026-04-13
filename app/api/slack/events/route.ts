@@ -4,6 +4,7 @@ import { gateway } from '@/lib/provider';
 import { ticketStore } from '@/lib/store';
 import { teamStore } from '@/lib/teamStore';
 import { agentStore } from '@/lib/agentStore';
+import { appendResolvedTicketDebrief } from '@/lib/appendResolvedTicketDebrief';
 import { enrichTicket } from '@/lib/enrichTicket';
 import type { SupportTicket } from '@/lib/types';
 
@@ -151,6 +152,11 @@ export async function POST(req: Request) {
           resolvedAt: now,
           updatedAt: now,
         });
+        try {
+          await appendResolvedTicketDebrief(ticket.id);
+        } catch (err) {
+          console.error('[notion-debrief] failed for resolved thread reply:', err);
+        }
       } else {
         // Customer replied but issue not resolved — reopen and re-enrich with full conversation context
         await ticketStore.update(ticket.id, {
@@ -204,6 +210,11 @@ export async function POST(req: Request) {
           const now = new Date().toISOString();
           if (verdict.trim().toLowerCase().startsWith('yes')) {
             await ticketStore.update(existingTicket.id, { status: 'resolved', lastCustomerMessage: messageText, resolvedAt: now, updatedAt: now });
+            try {
+              await appendResolvedTicketDebrief(existingTicket.id);
+            } catch (err) {
+              console.error('[notion-debrief] failed for resolved app mention:', err);
+            }
           } else {
             await ticketStore.update(existingTicket.id, { status: 'open', lastCustomerMessage: messageText, updatedAt: now });
             const conversationContext = [

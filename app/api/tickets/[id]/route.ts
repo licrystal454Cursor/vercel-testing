@@ -1,5 +1,6 @@
 import { ticketStore } from '@/lib/store';
 import { chatStore } from '@/lib/chatStore';
+import { appendResolvedTicketDebrief } from '@/lib/appendResolvedTicketDebrief';
 import type { SupportTicket } from '@/lib/types';
 
 export async function GET(
@@ -28,10 +29,27 @@ export async function PATCH(
     return Response.json({ error: 'Not found' }, { status: 404 });
   }
 
-  await ticketStore.update(id, { ...patch, updatedAt: new Date().toISOString() });
+  const now = new Date().toISOString();
+  const isResolving = patch.status === 'resolved' && ticket.status !== 'resolved';
+  const nextPatch: Partial<SupportTicket> = {
+    ...patch,
+    updatedAt: now,
+    ...(isResolving ? { resolvedAt: patch.resolvedAt ?? now } : {}),
+  };
+
+  await ticketStore.update(id, nextPatch);
   if (patch.archived === true) {
     await chatStore.deleteByTicket(id);
   }
+
+  if (isResolving) {
+    try {
+      await appendResolvedTicketDebrief(id);
+    } catch (error) {
+      console.error('[tickets.patch] failed to append resolved ticket debrief', error);
+    }
+  }
+
   const updated = await ticketStore.get(id);
   return Response.json({ ticket: updated });
 }

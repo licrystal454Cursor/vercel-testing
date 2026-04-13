@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import { Chat, useChat } from '@ai-sdk/react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { sendReply, patchTicket } from '@/lib/api';
 import type { SupportTicket, TeamMember } from '@/lib/types';
@@ -28,9 +29,11 @@ export function TicketDetailClient({
   teamMembers: TeamMember[];
   initialChatMessages: ChatMessage[];
 }) {
+  const router = useRouter();
   const [reply, setReply] = useState(ticket.aiDraftReply);
   const [sending, setSending] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [assigneeId, setAssigneeId] = useState(ticket.assigneeId ?? '');
   const [chatInput, setChatInput] = useState('');
   const [feedback, setFeedback] = useState<Record<string, 'good' | 'bad'>>({});
@@ -133,7 +136,7 @@ export function TicketDetailClient({
     try {
       await patchTicket(ticket.id, { archived: !ticket.archived });
       toast.success(ticket.archived ? 'Ticket unarchived' : 'Ticket archived');
-      window.location.href = '/tickets';
+      router.push('/tickets');
     } catch {
       toast.error('Failed to archive ticket');
       setArchiving(false);
@@ -146,11 +149,24 @@ export function TicketDetailClient({
     try {
       await sendReply(ticket.id, reply);
       toast.success('Reply sent to Slack thread');
-      window.location.reload();
+      router.refresh();
     } catch {
       toast.error('Failed to send reply');
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleResolve = async () => {
+    setResolving(true);
+    try {
+      await patchTicket(ticket.id, { status: 'resolved' });
+      toast.success('Ticket marked resolved');
+      router.refresh();
+    } catch {
+      toast.error('Failed to mark ticket resolved');
+    } finally {
+      setResolving(false);
     }
   };
 
@@ -235,6 +251,15 @@ export function TicketDetailClient({
           >
             {archiving ? '...' : ticket.archived ? 'Unarchive' : 'Archive'}
           </button>
+          {!isResolved && (
+            <button
+              onClick={handleResolve}
+              disabled={resolving}
+              className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+            >
+              {resolving ? 'Resolving...' : 'Mark Resolved'}
+            </button>
+          )}
         </div>
       </div>
 

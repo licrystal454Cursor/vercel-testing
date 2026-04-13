@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ticketStore } from '@/lib/store';
 import { teamStore } from '@/lib/teamStore';
@@ -60,12 +61,12 @@ export default async function TicketDetailPage({
 
   return (
     <main className="w-full px-6 py-8">
-      <a
+      <Link
         href="/tickets"
         className="inline-block text-sm text-slate-500 hover:text-slate-900 mb-6"
       >
         ← Back to tickets
-      </a>
+      </Link>
       <TicketDetailClient ticket={ticket} teamMembers={members} initialChatMessages={[syntheticInitial, ...chatMessages]} />
     </main>
   );

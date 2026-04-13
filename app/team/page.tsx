@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { teamStore } from '@/lib/teamStore';
 import { agentStore } from '@/lib/agentStore';
 import { TeamPageClient } from '@/components/TeamPageClient';
@@ -55,9 +56,9 @@ export default async function TeamPage() {
           <h1 className="text-2xl font-bold">Team</h1>
           <p className="text-sm text-slate-500 mt-1">Manage support agents and channel routing</p>
         </div>
-        <a href="/tickets" className="text-sm text-slate-500 hover:text-slate-900">
+        <Link href="/tickets" className="text-sm text-slate-500 hover:text-slate-900">
           ← Back to tickets
-        </a>
+        </Link>
       </div>
       <TeamPageClient
         initialMembers={members}
