@@ -12,6 +12,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { dataset } from './dataset';
 import { scoreAll, type Score } from './scorers';
+import type { NotionSearchResult } from '../lib/notionTool';
 import { runEnrichmentAgent } from '../lib/runEnrichmentAgent';
 import type { EvalCase } from './dataset';
 
@@ -25,7 +26,7 @@ function makeNotionMock(evalCase: EvalCase) {
   return tool({
     description: 'Search internal Notion documentation (stubbed for evals).',
     inputSchema: z.object({ query: z.string() }),
-    execute: async () => fixture,
+    execute: async (): Promise<NotionSearchResult> => fixture,
   });
 }
 

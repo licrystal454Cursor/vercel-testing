@@ -1,11 +1,8 @@
 import type { AgentConfig } from '@/lib/types';
 import type { AgentModelId } from '@/lib/provider';
+import type { NotionSearchResultPage } from '@/lib/notionTool';
 
-export interface NotionFixturePage {
-  title: string;
-  url: string;
-  content: string;
-}
+export type NotionFixturePage = NotionSearchResultPage;
 
 export interface EvalCase {
   id: string;

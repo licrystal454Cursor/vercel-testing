@@ -26,7 +26,6 @@ export async function runEnrichmentAgent(
   // customer-specific API key mapped yet.
   let stripeToolkit: Awaited<ReturnType<typeof buildStripeToolContext>>['toolkit'] | null = null;
   let stripeTools = {};
-  let stripeToolNames: string[] = [];
 
   if (channelContext?.secretKey) {
     const stripeToolContext = await buildStripeToolContext({
@@ -35,7 +34,6 @@ export async function runEnrichmentAgent(
     });
     stripeToolkit = stripeToolContext.toolkit;
     stripeTools = stripeToolContext.tools;
-    stripeToolNames = stripeToolContext.toolNames;
   }
 
   // Internal Notion context is pre-indexed up front so both the single-agent
@@ -85,7 +83,6 @@ export async function runEnrichmentAgent(
           modelId,
           providerOptions,
           stripeTools,
-          stripeToolNames,
           reportAccountFindings,
         })
       : null;

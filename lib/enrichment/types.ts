@@ -1,4 +1,5 @@
 import type { Tool } from 'ai';
+import type { NotionSearchResult } from '../notionTool';
 import type { AgentModelId } from '../provider';
 
 export interface EnrichmentOutput {
@@ -15,7 +16,7 @@ export interface EnrichmentOutput {
 
 export interface EnrichmentAgentOptions {
   toolOverrides?: {
-    searchNotionDocs?: Tool<{ query: string }, unknown>;
+    searchNotionDocs?: Tool<{ query: string }, NotionSearchResult>;
   };
   model?: AgentModelId;
   multiAgent?: boolean;

@@ -4,6 +4,14 @@ import { z } from 'zod';
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
+export interface NotionSearchResultPage {
+  title: string;
+  url: string;
+  content: string;
+}
+
+export type NotionSearchResult = string | NotionSearchResultPage[];
+
 /** Extract plain text from a Notion rich_text array */
 function richTextToString(richText: { plain_text: string }[]): string {
   return richText.map(t => t.plain_text).join('');
@@ -113,7 +121,7 @@ export const searchNotionDocs = tool({
   inputSchema: z.object({
     query: z.string().describe('Search query to find relevant Notion pages'),
   }),
-  execute: async ({ query }) => {
+  execute: async ({ query }): Promise<NotionSearchResult> => {
     if (!process.env.NOTION_API_KEY) {
       return 'Notion integration not configured (NOTION_API_KEY missing).';
     }

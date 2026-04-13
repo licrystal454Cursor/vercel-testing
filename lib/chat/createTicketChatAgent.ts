@@ -24,10 +24,7 @@ export async function createTicketChatAgent({
   prefetchedNotionPages: PrefetchedNotionPage[];
   stripeCustomerId: string | null;
   channelSecretKey: string | null;
-}): Promise<{
-  agent: ToolLoopAgent;
-  stripeToolkit: Awaited<ReturnType<typeof buildStripeToolContext>>['toolkit'] | null;
-}> {
+}) {
   let stripeTools: ToolSet = {};
   let stripeToolkit: Awaited<ReturnType<typeof buildStripeToolContext>>['toolkit'] | null = null;
 

@@ -7,27 +7,32 @@ export function createStripeAccountAgent({
   modelId,
   providerOptions,
   stripeTools,
-  stripeToolNames,
   reportAccountFindings,
 }: {
   modelId: AgentModelId;
   providerOptions: { gateway: { models: string[] } };
   stripeTools: ToolSet;
-  stripeToolNames: string[];
   reportAccountFindings: ToolSet[string];
 }) {
+  const tools = {
+    ...stripeTools,
+    reportAccountFindings,
+  };
+
+  const researchToolNames = Object.keys(tools).filter(
+    (toolName): toolName is Exclude<keyof typeof tools, 'reportAccountFindings'> =>
+      toolName !== 'reportAccountFindings',
+  );
+
   return new ToolLoopAgent({
     model: agentProvider.languageModel(modelId),
     providerOptions,
     instructions: STRIPE_ACCOUNT_INSTRUCTIONS,
-    tools: {
-      ...stripeTools,
-      reportAccountFindings,
-    },
+    tools,
     toolChoice: 'required',
     prepareStep: async ({ stepNumber }) => {
-      if (stepNumber === 0) return { activeTools: stripeToolNames };
-      if (stepNumber === 4) return { activeTools: ['reportAccountFindings'] };
+      if (stepNumber === 0) return { activeTools: researchToolNames };
+      if (stepNumber === 4) return { activeTools: ['reportAccountFindings'] as const };
       return {};
     },
     maxRetries: 5,
