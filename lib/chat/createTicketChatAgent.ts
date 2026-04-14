@@ -3,6 +3,7 @@ import { getNotionPage, searchNotionDocs } from '../notionTool';
 import { agentProvider } from '../provider';
 import { extractStripePage, searchStripeDocs } from '../stripeDocsTools';
 import { buildStripeToolContext, withToolLogging } from '../stripeToolkitTools';
+import { createSandboxCheckoutSessionTool } from '../stripeSandboxTools';
 import { consoleTelemetry } from '../telemetry';
 import type { AgentConfig, SupportTicket } from '../types';
 import type { PrefetchedNotionPage } from '../notionInstructionContext';
@@ -27,6 +28,9 @@ export async function createTicketChatAgent({
 }) {
   let stripeTools: ToolSet = {};
   let stripeToolkit: Awaited<ReturnType<typeof buildStripeToolContext>>['toolkit'] | null = null;
+  const sandboxCheckoutSessionTool = process.env.STRIPE_SANDBOX_SECRET_KEY
+    ? withToolLogging('createSandboxCheckoutSession', createSandboxCheckoutSessionTool(ticketId))
+    : null;
 
   if (channelSecretKey) {
     const stripeToolContext = await buildStripeToolContext({
@@ -43,6 +47,9 @@ export async function createTicketChatAgent({
     extractStripePage: withToolLogging('extractStripePage', extractStripePage),
     searchNotionDocs: withToolLogging('searchNotionDocs', searchNotionDocs),
     getNotionPage: withToolLogging('getNotionPage', getNotionPage),
+    ...(sandboxCheckoutSessionTool
+      ? { createSandboxCheckoutSession: sandboxCheckoutSessionTool }
+      : {}),
     ...stripeTools,
   };
 
@@ -72,6 +79,7 @@ export async function createTicketChatAgent({
       agentConfig,
       stripeCustomerId,
       prefetchedNotionPages,
+      Boolean(sandboxCheckoutSessionTool),
     ),
     tools,
     stopWhen: stepCountIs(10),

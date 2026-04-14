@@ -35,8 +35,13 @@ export interface StripeDocsReport {
 export interface NotionReport {
   notionSummary: string;
   notionSources: { title: string; url: string }[];
+  customerSpecificFindings?: string[];
+  genericGuidance?: string[];
 }
 
 export interface AccountReport {
   stripeFindings: string;
+  supportedConclusion?: string;
+  accountEvidence?: string[];
+  unsupportedHypotheses?: string[];
 }

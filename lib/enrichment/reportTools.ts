@@ -21,6 +21,8 @@ export function createResearchReportTools() {
         title: z.string().catch(''),
         url: z.string().catch(''),
       })).catch([]).describe('All relevant Notion pages found'),
+      customerSpecificFindings: z.array(z.string().catch('')).catch([]).describe('Findings explicitly confirmed by customer-specific internal docs. Leave empty if the docs are only generic guidance.'),
+      genericGuidance: z.array(z.string().catch('')).catch([]).describe('General internal guidance that may be relevant but does not prove this customer state.'),
     }),
   });
 
@@ -28,6 +30,9 @@ export function createResearchReportTools() {
     description: 'Report findings from investigating the customer Stripe account',
     inputSchema: z.object({
       stripeFindings: z.string().catch('').describe('Summary of what was found in the account: payment method state, recent errors, failed operations, etc.'),
+      supportedConclusion: z.string().catch('').describe('The strongest conclusion directly supported by Stripe account evidence.'),
+      accountEvidence: z.array(z.string().catch('')).catch([]).describe('Concrete facts directly observed from Stripe account tools.'),
+      unsupportedHypotheses: z.array(z.string().catch('')).catch([]).describe('Plausible explanations that were not directly confirmed by Stripe account tools.'),
     }),
   });
 

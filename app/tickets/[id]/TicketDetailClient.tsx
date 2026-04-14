@@ -20,6 +20,40 @@ function toUIMessage(msg: ChatMessage): UIMessage {
 const MIN_WIDTH = 260;
 const MAX_WIDTH = 900;
 
+type CheckoutSessionToolResult = {
+  url?: string;
+  checkoutSessionId?: string;
+  paymentMethodTypes?: string[] | null;
+};
+
+type ToolMessagePart = {
+  type?: string;
+  output?: unknown;
+};
+
+function isCheckoutSessionToolResult(value: unknown): value is CheckoutSessionToolResult {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as CheckoutSessionToolResult;
+  return typeof candidate.url === 'string';
+}
+
+function getSandboxCheckoutToolResult(parts: readonly unknown[]): CheckoutSessionToolResult | null {
+  for (const part of parts) {
+    if (!part || typeof part !== 'object') continue;
+    const toolPart = part as ToolMessagePart;
+    if (toolPart.type !== 'tool-createSandboxCheckoutSession') continue;
+    if (isCheckoutSessionToolResult(toolPart.output)) return toolPart.output;
+  }
+  return null;
+}
+
+function stripCheckoutUrls(text: string): string {
+  return text
+    .replace(/https:\/\/checkout\.stripe\.com\/\S+/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export function TicketDetailClient({
   ticket,
   teamMembers,
@@ -412,9 +446,12 @@ export function TicketDetailClient({
             {messages.map(msg => {
               const textPart = msg.parts.find(p => p.type === 'text');
               const text = textPart && 'text' in textPart ? textPart.text : '';
+              const checkoutToolResult = getSandboxCheckoutToolResult(msg.parts);
+              const displayText = checkoutToolResult ? stripCheckoutUrls(text) : text;
               // During streaming show the partial assistant message even with no text yet
               // (it will populate word-by-word); only hide fully-empty non-streaming messages
-              if (!text && msg.role === 'assistant' && !isStreaming) return null;
+              // that also have no structured tool result to show.
+              if (!displayText && !checkoutToolResult && msg.role === 'assistant' && !isStreaming) return null;
               const isAssistant = msg.role === 'assistant';
               const msgFeedback = feedback[msg.id];
               return (
@@ -423,11 +460,16 @@ export function TicketDetailClient({
                   className={`flex flex-col ${isAssistant ? 'items-start' : 'items-end'}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-lg px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed ${
+                    className={`max-w-[80%] min-w-0 rounded-lg px-4 py-3 text-sm whitespace-pre-wrap break-all leading-relaxed ${
                       isAssistant ? 'bg-slate-100 text-slate-900' : 'bg-blue-600 text-white'
                     }`}
                   >
-                    {text}
+                    {displayText ? (
+                      <LinkifiedText text={displayText} isAssistant={isAssistant} />
+                    ) : null}
+                    {checkoutToolResult ? (
+                      <SandboxCheckoutToolCard result={checkoutToolResult} />
+                    ) : null}
                   </div>
                   {isAssistant && (
                     <div className="mt-1 ml-1">
@@ -555,6 +597,65 @@ function Section({
       {children}
     </section>
   );
+}
+
+function SandboxCheckoutToolCard({
+  result,
+}: {
+  result: CheckoutSessionToolResult;
+}) {
+  return (
+    <div className="space-y-2">
+      <a
+        href={result.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+      >
+        Open Checkout Session
+      </a>
+      <p className="text-xs text-slate-600 break-all">
+        {result.url}
+      </p>
+      {result.paymentMethodTypes?.length ? (
+        <p className="text-xs text-slate-500">
+          Payment method types: {result.paymentMethodTypes.join(', ')}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function LinkifiedText({
+  text,
+  isAssistant,
+}: {
+  text: string;
+  isAssistant: boolean;
+}) {
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+
+  return parts.map((part, index) => {
+    if (!part) return null;
+
+    if (/^https?:\/\/[^\s]+$/.test(part)) {
+      return (
+        <a
+          key={`${part}-${index}`}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`underline break-all ${
+            isAssistant ? 'text-blue-700 hover:text-blue-900' : 'text-blue-100 hover:text-white'
+          }`}
+        >
+          {part}
+        </a>
+      );
+    }
+
+    return <span key={index}>{part}</span>;
+  });
 }
 
 function DocsContent({

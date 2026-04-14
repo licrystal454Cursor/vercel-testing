@@ -64,6 +64,19 @@ export function buildSynthesisPrompt({
   notionReport?: NotionReport;
   accountReport?: AccountReport;
 }): string {
+  const accountEvidence = accountReport?.accountEvidence?.length
+    ? accountReport.accountEvidence.map(item => `- ${item}`).join('\n')
+    : 'No direct account evidence provided.';
+  const unsupportedHypotheses = accountReport?.unsupportedHypotheses?.length
+    ? accountReport.unsupportedHypotheses.map(item => `- ${item}`).join('\n')
+    : 'None.';
+  const notionCustomerSpecificFindings = notionReport?.customerSpecificFindings?.length
+    ? notionReport.customerSpecificFindings.map(item => `- ${item}`).join('\n')
+    : 'No customer-specific Notion facts confirmed.';
+  const notionGenericGuidance = notionReport?.genericGuidance?.length
+    ? notionReport.genericGuidance.map(item => `- ${item}`).join('\n')
+    : 'None.';
+
   return [
     prompt,
     '',
@@ -72,7 +85,28 @@ export function buildSynthesisPrompt({
     '',
     '## Internal Notion Context',
     notionReport?.notionSummary ?? 'No internal documentation found.',
-    ...(accountReport ? ['', '## Stripe Account Investigation', accountReport.stripeFindings] : []),
+    '',
+    '### Customer-Specific Notion Findings',
+    notionCustomerSpecificFindings,
+    '',
+    '### Generic Internal Guidance',
+    notionGenericGuidance,
+    ...(accountReport
+      ? [
+          '',
+          '## Stripe Account Investigation',
+          accountReport.stripeFindings,
+          '',
+          '### Supported Account Conclusion',
+          accountReport.supportedConclusion ?? 'No supported conclusion provided.',
+          '',
+          '### Direct Account Evidence',
+          accountEvidence,
+          '',
+          '### Unsupported Hypotheses',
+          unsupportedHypotheses,
+        ]
+      : []),
   ].join('\n');
 }
 
@@ -106,7 +140,10 @@ export function buildMultiAgentOutput({
     sources: stripeDocsReport?.sources ?? [],
     notionSummary: notionReport?.notionSummary ?? '',
     notionSources: notionReport?.notionSources ?? [],
-    stripeFindings: accountReport?.stripeFindings ?? '',
+    stripeFindings: (
+      accountReport?.supportedConclusion?.trim() ||
+      accountReport?.stripeFindings
+    ) ?? '',
     submitAnalysisCalled: !!submitCall,
     stepCount:
       stripeDocsResult.steps.length +

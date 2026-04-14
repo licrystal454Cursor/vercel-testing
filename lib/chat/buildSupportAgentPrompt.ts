@@ -6,6 +6,7 @@ export function buildSupportAgentPrompt(
   agentConfig?: AgentConfig,
   stripeCustomerId?: string | null,
   prefetchedNotionPages?: PrefetchedNotionPage[],
+  sandboxCheckoutSessionToolAvailable = false,
 ): string {
   let docsSummary = '';
   let notionSummary = '';
@@ -47,6 +48,9 @@ export function buildSupportAgentPrompt(
       ? `- Stripe account tools: LIVE and connected to Stripe account ${stripeCustomerId}. The API key is already scoped to this account — do NOT pass "${stripeCustomerId}" as a customer parameter to any tool. Just call list_payment_intents, list_invoices, list_subscriptions, retrieve_balance, get_payment_method_configurations, etc. with no customer filter to get all account data. ALWAYS call these tools when asked — never say the connection is inactive.`
       : `- Stripe account tools: LIVE and connected. Use retrieve_customer("${stripeCustomerId}"), list_payment_intents, list_invoices, list_subscriptions, get_payment_method_configurations, etc. to query real account data. Pass customer="${stripeCustomerId}" when filtering by customer. ALWAYS call these tools when asked — never say the connection is inactive.`
     : '- Stripe account tools: available but no Stripe account is mapped to this channel yet.';
+  const sandboxCheckoutSessionInstructions = sandboxCheckoutSessionToolAvailable
+    ? '- createSandboxCheckoutSession: create a test Checkout Session in the internal Stripe sandbox account configured for this app. Use it only when the support agent explicitly asks for a sandbox checkout flow to confirm behavior. Never create a Checkout Session in the customer account.'
+    : '- Sandbox Checkout Session creation is not configured in this environment.';
 
   const baseInstructions = `You are a Stripe support expert assisting a SUPPORT AGENT (the person you are chatting with now). The support agent is investigating a ticket on behalf of their customer.
 
@@ -64,10 +68,18 @@ ${ticketContext}
 
 IMPORTANT: You have live tool access. When asked for any information, call the appropriate tool immediately — do NOT say you lack access or ask for information already provided above.
 
+SAFETY RULES FOR STRIPE WRITES:
+- Never create test objects in the customer's Stripe account.
+- If the support agent asks you to create a Checkout Session for testing, use createSandboxCheckoutSession only.
+- Treat the customer Stripe tools as investigation tools, not as the place to create sandbox repro artifacts.
+- If the support agent specifies payment method types such as "us_bank_account" or "card", pass them explicitly to createSandboxCheckoutSession.
+- When sharing a Checkout URL, copy the exact URL returned by the tool verbatim. Do not shorten it or remove any hash fragment.
+
 Available tools:
 - searchStripeDocs / extractStripePage: look up Stripe documentation
 - searchNotionDocs: search the internal knowledge base by keyword
 - getNotionPage: fetch a specific Notion page by its page ID
+- ${sandboxCheckoutSessionInstructions}
 ${stripeToolInstructions}
 
 Respond conversationally to the support agent. Always call tools to fetch real data rather than guessing or refusing.`;
