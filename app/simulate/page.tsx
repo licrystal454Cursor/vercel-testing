@@ -18,7 +18,7 @@ export default function SimulatePage() {
       const res = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messageText, channelId: 'C0ARTN8MDPD', multiAgent }),
+        body: JSON.stringify({ messageText, channelId: 'C0ASUJE9N48', multiAgent }),
       });
       const { ticket } = await res.json();
       router.push(`/tickets/${ticket.id}`);

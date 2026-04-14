@@ -1,4 +1,9 @@
-import { buildEnrichmentPrompt, buildInstructionNotionContext, buildNotionAgentInstructions } from './enrichment/buildContext';
+import {
+  buildEnrichmentPrompt,
+  buildInstructionNotionContext,
+  buildNotionAgentInstructions,
+  createCustomerAwareNotionSearchTool,
+} from './enrichment/buildContext';
 import { createNotionResearchAgent } from './enrichment/createNotionResearchAgent';
 import { createStripeAccountAgent } from './enrichment/createStripeAccountAgent';
 import { createStripeDocsAgent } from './enrichment/createStripeDocsAgent';
@@ -38,7 +43,14 @@ export async function runEnrichmentAgent(
 
   // Internal Notion context is pre-indexed up front so both the single-agent
   // and multi-agent flows can consume the same retrieved customer context.
-  const notionContext = await buildInstructionNotionContext(messageText, agentConfig?.instructions);
+  const {
+    promptContext: notionContext,
+    prefetchedNotionPages,
+  } = await buildInstructionNotionContext(messageText, agentConfig?.instructions);
+  const searchNotionDocsTool = options?.toolOverrides?.searchNotionDocs
+    ?? (prefetchedNotionPages.length > 0
+      ? createCustomerAwareNotionSearchTool(prefetchedNotionPages)
+      : undefined);
   const multiAgent = options?.multiAgent ?? true;
 
   // Preserve the original single-agent path for evals and lower-complexity runs.
@@ -50,6 +62,7 @@ export async function runEnrichmentAgent(
       options,
       notionContext,
       stripeTools,
+      searchNotionDocsTool,
     });
   }
 
@@ -75,7 +88,7 @@ export async function runEnrichmentAgent(
       providerOptions,
       instructions: buildNotionAgentInstructions(agentConfig, notionContext),
       reportNotionFindings,
-      overriddenSearchNotionDocs: options?.toolOverrides?.searchNotionDocs,
+      overriddenSearchNotionDocs: searchNotionDocsTool,
     });
 
     const stripeAccountAgent = stripeToolkit

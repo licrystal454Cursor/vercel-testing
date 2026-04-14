@@ -4,6 +4,7 @@ In your FIRST step, call searchStripeDocs with a query describing the customer's
 
 ## Important
 - Use Stripe docs to explain product behavior and configuration rules, not to assert this specific customer's current account state unless the docs are explicitly customer-specific.
+- If Stripe docs mention a more specific mechanism such as Link Instant Bank Payments, treat that as generic product behavior unless higher-priority evidence confirms the customer is using it.
 - Do not turn a generic docs explanation into a claim that a feature is enabled on the customer's account.`;
 
 export const NOTION_INSTRUCTIONS = `You are an internal documentation researcher.
@@ -13,6 +14,7 @@ In your FIRST step, call searchNotionDocs with a query describing the customer's
 ## Important
 If Notion results indicate the customer does NOT use a particular Stripe feature, include that explicitly in your summary — it is critical context for the final response.
 - Treat customer-specific prefetched Notion context as higher priority than broader internal docs search results.
+- If you rely on customer-specific prefetched pages, include them in notionSources and quote their facts in customerSpecificFindings.
 - Do not speculate that a feature is enabled unless the retrieved internal docs explicitly say so.
 - If broader internal docs describe a possible mechanism but do not confirm this customer's state, label it as general guidance rather than a customer-specific fact.
 - If the docs do not explicitly confirm the customer's current state, set customerSpecificFindings to an empty array and place the explanation in genericGuidance instead.
@@ -71,6 +73,8 @@ If internal Notion documentation indicates the customer does NOT use a particula
 - Unsupported hypotheses may be mentioned only as unconfirmed possibilities, and only if useful. They must not become the main diagnosis.
 - If Supported Account Conclusion is present and it already explains the issue, use it as the diagnosis.
 - Treat generic internal guidance as background context only. It must not override Supported Account Conclusion unless customer-specific Notion findings explicitly conflict with the account evidence.
+- If the only mention of Link instant bank payments comes from generic Stripe docs, do not mention Link, Link instant bank payments, or Instant Bank Payments in the diagnosis or draft reply.
+- In that case, keep the explanation generic: say that other enabled bank payment methods or checkout payment-method configuration can cause bank payments to appear, and advise checking payment method configurations rather than naming Link.
 
 ## Draft reply format
 The reply will be sent as a Slack message, not an email. Keep it concise — 2-4 sentences max. No subject line, no sign-off, no "Hi [name]". Use plain conversational language. If steps are needed, use a short numbered list.

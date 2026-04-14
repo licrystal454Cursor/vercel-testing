@@ -121,32 +121,34 @@ export const searchNotionDocs = tool({
   inputSchema: z.object({
     query: z.string().describe('Search query to find relevant Notion pages'),
   }),
-  execute: async ({ query }): Promise<NotionSearchResult> => {
-    if (!process.env.NOTION_API_KEY) {
-      return 'Notion integration not configured (NOTION_API_KEY missing).';
-    }
-
-    const { results } = await notion.search({
-      query,
-      filter: { value: 'page', property: 'object' },
-      page_size: 5,
-    });
-
-    const pages = results.filter(isFullPage);
-    if (pages.length === 0) return 'No relevant Notion pages found.';
-
-    const output = await Promise.all(
-      pages.map(async page => {
-        const titleProp = Object.values(page.properties).find(
-          p => p.type === 'title'
-        ) as { type: 'title'; title: { plain_text: string }[] } | undefined;
-        const title = titleProp ? richTextToString(titleProp.title) : 'Untitled';
-        const url = page.url;
-        const content = await blocksToText(page.id);
-        return { title, url, content };
-      })
-    );
-
-    return output;
-  },
+  execute: async ({ query }): Promise<NotionSearchResult> => searchNotionDocsQuery(query),
 });
+
+export async function searchNotionDocsQuery(query: string): Promise<NotionSearchResult> {
+  if (!process.env.NOTION_API_KEY) {
+    return 'Notion integration not configured (NOTION_API_KEY missing).';
+  }
+
+  const { results } = await notion.search({
+    query,
+    filter: { value: 'page', property: 'object' },
+    page_size: 5,
+  });
+
+  const pages = results.filter(isFullPage);
+  if (pages.length === 0) return 'No relevant Notion pages found.';
+
+  const output = await Promise.all(
+    pages.map(async page => {
+      const titleProp = Object.values(page.properties).find(
+        p => p.type === 'title'
+      ) as { type: 'title'; title: { plain_text: string }[] } | undefined;
+      const title = titleProp ? richTextToString(titleProp.title) : 'Untitled';
+      const url = page.url;
+      const content = await blocksToText(page.id);
+      return { title, url, content };
+    })
+  );
+
+  return output;
+}

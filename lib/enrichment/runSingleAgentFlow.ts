@@ -18,6 +18,7 @@ export async function runSingleAgentFlow({
   options,
   notionContext,
   stripeTools,
+  searchNotionDocsTool,
 }: {
   messageText: string;
   agentConfig?: AgentConfig;
@@ -25,11 +26,12 @@ export async function runSingleAgentFlow({
   options?: EnrichmentAgentOptions;
   notionContext: string;
   stripeTools: ToolSet;
+  searchNotionDocsTool?: ToolSet[string];
 }): Promise<EnrichmentOutput> {
   const tools = {
     searchStripeDocs,
     extractStripePage,
-    searchNotionDocs: options?.toolOverrides?.searchNotionDocs ?? searchNotionDocs,
+    searchNotionDocs: searchNotionDocsTool ?? options?.toolOverrides?.searchNotionDocs ?? searchNotionDocs,
     ...stripeTools,
     submitAnalysis: createSingleAgentSubmitAnalysisTool(),
   };
